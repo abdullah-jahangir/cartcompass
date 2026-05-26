@@ -3,3 +3,7 @@ package-lock.json
 package.json
 .DS_Store
 *.log
+
+# API keys — never commit either of these
+.env.local
+js/config.js

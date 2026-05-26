@@ -2,18 +2,17 @@
  * CartCompass — app.js
  * Finds the nearest halal food cart and points a compass needle toward it.
  *
- * Data sources (all free, no API key):
- *   1. Overpass API (OpenStreetMap) — global, scalable
- *   2. NYC Open Data Mobile Food Vendor Permits — denser NYC-specific data
+ * Data source: Foursquare Places API (free tier, 1,000 calls/day)
+ * API key lives in js/config.js (gitignored).
  */
 
 'use strict';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const CACHE_KEY   = 'cartcompass_carts_v3';
-const CACHE_TTL   = 6 * 60 * 60 * 1000;      // 6 hours
+const CACHE_KEY    = 'cartcompass_carts_v4';   // bumped so old cache is ignored
+const CACHE_TTL    = 6 * 60 * 60 * 1000;      // 6 hours
 const FETCH_RADIUS = 8000;                     // metres to search
-const NYC_BOUNDS  = { minLat: 40.4774, maxLat: 40.9176, minLng: -74.2591, maxLng: -73.7004 };
+const NYC_BOUNDS   = { minLat: 40.4774, maxLat: 40.9176, minLng: -74.2591, maxLng: -73.7004 };
 
 // ── State ────────────────────────────────────────────────────────────────────
 const S = {
@@ -190,7 +189,7 @@ function lerpNeedle(target) {
 
 // ── Data fetching ────────────────────────────────────────────────────────────
 async function loadCarts(lat, lng) {
-  // Return cache if fresh
+  // Return cache if still fresh
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (raw) {
@@ -202,101 +201,48 @@ async function loadCarts(lat, lng) {
     }
   } catch (_) {}
 
-  const carts = [];
-
-  // Source 1: Overpass / OpenStreetMap
-  try {
-    const osmCarts = await fetchOverpass(lat, lng);
-    carts.push(...osmCarts);
-    console.log('[CartCompass] OSM carts:', osmCarts.length);
-  } catch (e) {
-    console.warn('[CartCompass] Overpass failed:', e.message);
-  }
-
-  // Source 2: NYC Open Data (only if user is in NYC)
-  if (inNYC(lat, lng)) {
-    try {
-      const nycCarts = await fetchNYCOpenData();
-      carts.push(...nycCarts);
-      console.log('[CartCompass] NYC Open Data carts:', nycCarts.length);
-    } catch (e) {
-      console.warn('[CartCompass] NYC Open Data failed:', e.message);
-    }
-  }
-
-  // Deduplicate: drop any cart within 15 m of an already-kept cart
-  const unique = deduplicateByProximity(carts, 15);
-  console.log('[CartCompass] Total unique carts:', unique.length);
+  const carts = await fetchFoursquare(lat, lng);
+  console.log('[CartCompass] Foursquare returned:', carts.length, 'carts');
 
   // Persist to cache
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: unique }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: carts }));
   } catch (_) {}
 
-  return unique;
+  return carts;
 }
 
-async function fetchOverpass(lat, lng) {
-  const r = FETCH_RADIUS;
-  const q = encodeURIComponent(`
-    [out:json][timeout:20];
-    (
-      node["diet:halal"="yes"]["amenity"~"food_cart|fast_food|restaurant"](around:${r},${lat},${lng});
-      node["cuisine"="halal"]["amenity"~"food_cart|fast_food|restaurant"](around:${r},${lat},${lng});
-      node["name"~"[Hh]alal"]["amenity"="food_cart"](around:${r},${lat},${lng});
-      node["amenity"="food_cart"]["name"~"[Hh]alal"](around:${r},${lat},${lng});
-    );
-    out body;
-  `.trim());
+async function fetchFoursquare(lat, lng) {
+  // Hits our own Vercel proxy — key never touches the browser
+  const params = new URLSearchParams({
+    ll:     `${lat},${lng}`,
+    radius: FETCH_RADIUS,
+  });
 
-  const res = await fetchWithTimeout(
-    `https://overpass-api.de/api/interpreter?data=${q}`,
-    18000
-  );
-  if (!res.ok) throw new Error(`Overpass HTTP ${res.status}`);
+  const res = await fetchWithTimeout(`/api/carts?${params}`, 15000);
+
+  if (res.status === 429) throw new Error('Too many requests — try again in a moment.');
+  if (!res.ok)            throw new Error(`Server error ${res.status}`);
 
   const json = await res.json();
-  return (json.elements || [])
-    .filter(n => n.lat != null && n.lon != null)
-    .map(n => ({
-      id:      `osm_${n.id}`,
-      name:    n.tags?.name || 'Halal Cart',
-      lat:     n.lat,
-      lng:     n.lon,
-      address: buildOSMAddress(n.tags),
-      source:  'osm',
+  return (json.results || [])
+    .filter(p => p.geocodes?.main?.latitude != null)
+    .map(p => ({
+      id:      `fsq_${p.fsq_id}`,
+      name:    p.name || 'Halal Cart',
+      lat:     p.geocodes.main.latitude,
+      lng:     p.geocodes.main.longitude,
+      address: buildFSQAddress(p.location),
+      source:  'foursquare',
     }));
 }
 
-function buildOSMAddress(tags) {
-  if (!tags) return '';
-  const parts = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean);
-  return parts.join(' ');
-}
-
-async function fetchNYCOpenData() {
-  // Mobile Food Vendor Permits filtered by "HALAL" in business name
-  const url =
-    'https://data.cityofnewyork.us/resource/pytf-ae3e.json' +
-    '?$where=' + encodeURIComponent("upper(businessname) like '%HALAL%'") +
-    '&$limit=1000' +
-    '&$select=businessname,latitude,longitude,premisename';
-
-  const res = await fetchWithTimeout(url, 15000);
-  if (!res.ok) throw new Error(`NYC Open Data HTTP ${res.status}`);
-
-  const json = await res.json();
-  return json
-    .filter(r => r.latitude && r.longitude &&
-                 !isNaN(+r.latitude) && !isNaN(+r.longitude))
-    .map(r => ({
-      id:      `nyc_${r.businessname || ''}_${r.latitude}`.replace(/\s+/g, '_'),
-      name:    titleCase(r.businessname) || 'Halal Cart',
-      lat:     +r.latitude,
-      lng:     +r.longitude,
-      address: r.premisename ? titleCase(r.premisename) : '',
-      source:  'nyc',
-    }));
+function buildFSQAddress(loc) {
+  if (!loc) return '';
+  // Prefer street address; fall back to neighbourhood / city
+  return loc.address
+    || [loc.neighborhood, loc.locality].filter(Boolean).join(', ')
+    || '';
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -304,20 +250,6 @@ function fetchWithTimeout(url, ms) {
   const ctrl = new AbortController();
   const id   = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
-}
-
-function titleCase(str) {
-  return (str || '').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-}
-
-function deduplicateByProximity(carts, thresholdMeters) {
-  const kept = [];
-  for (const c of carts) {
-    if (!kept.some(k => haversine(c.lat, c.lng, k.lat, k.lng) < thresholdMeters)) {
-      kept.push(c);
-    }
-  }
-  return kept;
 }
 
 function inNYC(lat, lng) {
