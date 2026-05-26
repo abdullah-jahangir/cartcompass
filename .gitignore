@@ -4,6 +4,6 @@ package.json
 .DS_Store
 *.log
 
-# API keys — never commit either of these
-.env.local
+# API keys — never commit these
+.dev.vars
 js/config.js
