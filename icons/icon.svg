@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="115" fill="#0a0a0a"/>
+
+  <!-- Outer compass ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#2a2a2a" stroke-width="4"/>
+
+  <!-- Tick marks (major) -->
+  <g stroke="#555" stroke-width="4" stroke-linecap="round">
+    <!-- N -->  <line x1="256" y1="72"  x2="256" y2="96"/>
+    <!-- E -->  <line x1="440" y1="256" x2="416" y2="256"/>
+    <!-- S -->  <line x1="256" y1="440" x2="256" y2="416"/>
+    <!-- W -->  <line x1="72"  y1="256" x2="96"  y2="256"/>
+  </g>
+
+  <!-- South needle (dark gray) -->
+  <polygon points="256,320 268,256 256,270 244,256" fill="#333"/>
+
+  <!-- North needle (gold) -->
+  <polygon points="256,192 268,256 256,242 244,256" fill="#f5a623"/>
+
+  <!-- Glow on north needle -->
+  <polygon points="256,192 268,256 256,242 244,256" fill="url(#glow)" opacity="0.4"/>
+  <defs>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#fff"/>
+      <stop offset="100%" stop-color="#f5a623"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Center hub -->
+  <circle cx="256" cy="256" r="20" fill="#0a0a0a" stroke="#f5a623" stroke-width="4"/>
+  <circle cx="256" cy="256" r="7"  fill="#f5a623"/>
+
+  <!-- "N" label -->
+  <text x="256" y="62" text-anchor="middle" font-family="-apple-system,Helvetica,sans-serif"
+        font-size="28" font-weight="700" fill="#f5a623" letter-spacing="1">N</text>
+</svg>

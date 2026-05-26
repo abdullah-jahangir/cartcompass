@@ -1,0 +1,393 @@
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --gold: #f5a623;
+  --gold-dim: #c17d10;
+  --green: #1e6b3c;
+  --green-bright: #27ae60;
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --bg-card2: #1c1c1c;
+  --border: #2a2a2a;
+  --text: #f0f0f0;
+  --text-dim: #888;
+  --red: #e74c3c;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Screens ──────────────────────────────────────────────────────────────── */
+.screen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+.screen.active { display: flex; }
+
+/* ── Splash ───────────────────────────────────────────────────────────────── */
+#splash {
+  background: radial-gradient(ellipse at 50% 60%, #1a1a1a 0%, var(--bg) 70%);
+}
+
+.splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 0 32px;
+  text-align: center;
+  max-width: 360px;
+}
+
+.splash-icon {
+  font-size: 80px;
+  line-height: 1;
+  filter: drop-shadow(0 0 24px rgba(245,166,35,0.4));
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+#splash h1 {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
+.tagline {
+  font-size: 16px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.permission-note {
+  font-size: 12px;
+  color: #555;
+  margin-top: -6px;
+}
+
+/* ── Loading ──────────────────────────────────────────────────────────────── */
+.loading-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#loading-msg {
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+/* ── Compass Screen ───────────────────────────────────────────────────────── */
+#compass-screen {
+  justify-content: flex-start;
+  overflow: hidden;
+}
+
+/* ── Top Bar ──────────────────────────────────────────────────────────────── */
+.top-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px 8px;
+  padding-top: calc(12px + var(--safe-top));
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+
+.city-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: var(--green);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s, background 0.2s;
+}
+.icon-btn:active { background: var(--border); color: var(--text); }
+
+.top-left, .top-right {
+  width: 60px;
+  display: flex;
+  align-items: center;
+}
+.top-right { justify-content: flex-end; }
+
+/* ── Compass Main ─────────────────────────────────────────────────────────── */
+.compass-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 8px 20px 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ── Compass Ring ─────────────────────────────────────────────────────────── */
+.compass-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.compass-outer-ring {
+  position: relative;
+  width: min(72vw, 320px);
+  height: min(72vw, 320px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #1e1e1e 0%, #0f0f0f 100%);
+  border: 2px solid var(--border);
+  box-shadow:
+    0 0 0 1px #111,
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* Tick-mark canvas fills the ring exactly */
+#tick-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* Cardinal labels */
+.cardinal {
+  position: absolute;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  transform: translate(-50%, -50%);
+}
+.cardinal.n { top: 9%;  left: 50%; color: var(--gold); }
+.cardinal.e { top: 50%; left: 91%; }
+.cardinal.s { top: 91%; left: 50%; }
+.cardinal.w { top: 50%; left: 9%; }
+
+/* Needle wrapper (centred, rotates) */
+.needle-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+  /* JS drives the rotation via requestAnimationFrame — no CSS transition here
+     to avoid fighting with the JS lerp */
+}
+
+.needle-svg {
+  width: 14%;
+  height: 56%;
+  filter: drop-shadow(0 2px 6px rgba(245,166,35,0.3));
+}
+
+/* ── Cart Card ────────────────────────────────────────────────────────────── */
+.cart-card {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cart-halal-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--green-bright);
+  text-transform: uppercase;
+}
+
+.cart-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cart-meta-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.cart-distance {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold);
+}
+
+.cart-address {
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 12px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.btn:active { opacity: 0.8; transform: scale(0.97); }
+
+.btn-primary {
+  background: var(--gold);
+  color: #000;
+  font-size: 16px;
+  padding: 14px 28px;
+  width: 100%;
+  max-width: 280px;
+  border-radius: 14px;
+}
+
+.btn-sm {
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.btn-outline:active { background: var(--border); }
+
+.hidden { display: none !important; }
+
+/* ── Error Banner ─────────────────────────────────────────────────────────── */
+.error-banner {
+  position: fixed;
+  bottom: calc(60px + var(--safe-bottom));
+  left: 16px;
+  right: 16px;
+  background: #2a0f0f;
+  border: 1px solid #6b2020;
+  color: #ff8a8a;
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  gap: 8px;
+  z-index: 100;
+}
+.error-banner button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────────────── */
+.bottom-bar {
+  width: 100%;
+  text-align: center;
+  padding: 10px 16px;
+  padding-bottom: calc(10px + var(--safe-bottom));
+  flex-shrink: 0;
+}
+.bottom-bar p {
+  font-size: 11px;
+  color: #444;
+  line-height: 1.6;
+}
+.bottom-bar a {
+  color: #555;
+  text-decoration: none;
+}
+.bottom-bar a:hover { color: var(--text-dim); }
+.disclaimer { font-style: italic; }
