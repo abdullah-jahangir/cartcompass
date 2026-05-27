@@ -7,3 +7,6 @@ package.json
 # API keys — never commit these
 .dev.vars
 js/config.js
+
+# Local-only docs
+LEARN.md
