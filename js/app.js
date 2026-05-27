@@ -9,7 +9,7 @@
 'use strict';
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const CACHE_KEY    = 'cartcompass_carts_v4';   // bumped so old cache is ignored
+const CACHE_KEY    = 'cartcompass_carts_v5';   // bumped — switched to Google Places
 const CACHE_TTL    = 6 * 60 * 60 * 1000;      // 6 hours
 const FETCH_RADIUS = 8000;                     // metres to search
 const NYC_BOUNDS   = { minLat: 40.4774, maxLat: 40.9176, minLng: -74.2591, maxLng: -73.7004 };
