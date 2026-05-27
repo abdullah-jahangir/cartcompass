@@ -10,3 +10,10 @@ js/config.js
 
 # Local-only docs
 LEARN.md
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
