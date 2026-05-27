@@ -5,31 +5,24 @@
  * The API key never leaves this server — the browser never sees it.
  *
  * Called by the app as:  GET /api/carts?ll=40.75,-73.98&radius=8000
- *
- * Google Places API (New) docs:
- * https://developers.google.com/maps/documentation/places/web-service/text-search
  */
 
-module.exports = async function handler(req, res) {
-  // ── Only allow GET ───────────────────────────────────────────────────────
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+export async function onRequestGet({ request, env }) {
+  const url    = new URL(request.url);
+  const ll     = url.searchParams.get('ll');
+  const radius = url.searchParams.get('radius') || '8000';
 
-  const { ll, radius = '8000' } = req.query;
-
+  // ── Validate ─────────────────────────────────────────────────────────────
   if (!ll) {
-    return res.status(400).json({ error: 'Missing required parameter: ll' });
+    return json({ error: 'Missing required parameter: ll' }, 400);
   }
   if (!/^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(ll)) {
-    return res.status(400).json({ error: 'Invalid ll — expected "lat,lng"' });
+    return json({ error: 'Invalid ll — expected "lat,lng"' }, 400);
   }
 
   const [lat, lng] = ll.split(',').map(Number);
 
   // ── Call Google Places Text Search (New) ─────────────────────────────────
-  // Text Search lets us query "halal food" near a point.
-  // It returns up to 20 results per request (max allowed).
   const body = {
     textQuery: 'halal food',
     locationBias: {
@@ -47,10 +40,9 @@ module.exports = async function handler(req, res) {
       {
         method: 'POST',
         headers: {
-          'Content-Type':    'application/json',
-          // Key lives in Cloudflare env — never sent to the browser
-          'X-Goog-Api-Key':  process.env.GOOGLE_PLACES_KEY,
-          // Only request the fields we actually use (keeps cost at lowest tier)
+          'Content-Type':     'application/json',
+          'X-Goog-Api-Key':   env.GOOGLE_PLACES_KEY,
+          // Only request fields we use — keeps billing at minimum tier
           'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.formattedAddress',
         },
         body: JSON.stringify(body),
@@ -58,19 +50,16 @@ module.exports = async function handler(req, res) {
     );
 
     if (upstream.status === 403) {
-      console.error('[carts] Google Places: API key invalid or quota exceeded');
-      return res.status(502).json({ error: 'Upstream auth error' });
+      console.error('[carts] Google Places: key invalid or quota exceeded');
+      return json({ error: 'Upstream auth error' }, 502);
     }
     if (!upstream.ok) {
-      const err = await upstream.json().catch(() => ({}));
-      console.error('[carts] Google Places error:', err);
-      return res.status(502).json({ error: `Upstream error ${upstream.status}` });
+      return json({ error: `Upstream error ${upstream.status}` }, 502);
     }
 
     const data = await upstream.json();
 
-    // Normalise Google's response shape to match what app.js already expects:
-    // { results: [{ fsq_id, name, geocodes: { main: { latitude, longitude } }, location: { address } }] }
+    // Normalise to the shape app.js already expects
     const results = (data.places || []).map(p => ({
       fsq_id:   p.id,
       name:     p.displayName?.text || 'Halal Cart',
@@ -80,17 +69,25 @@ module.exports = async function handler(req, res) {
           longitude: p.location?.longitude,
         },
       },
-      location: {
-        address: p.formattedAddress || '',
-      },
+      location: { address: p.formattedAddress || '' },
     }));
 
-    // Cache at Cloudflare's CDN for 6 hours — same location = same carts
-    res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=3600');
-    return res.json({ results });
+    return new Response(JSON.stringify({ results }), {
+      headers: {
+        'Content-Type':  'application/json',
+        'Cache-Control': 's-maxage=21600, stale-while-revalidate=3600',
+      },
+    });
 
   } catch (err) {
     console.error('[carts] fetch failed:', err.message);
-    return res.status(500).json({ error: 'Failed to reach Google Places' });
+    return json({ error: 'Failed to reach Google Places' }, 500);
   }
-};
+}
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
